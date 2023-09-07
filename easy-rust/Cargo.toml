@@ -7,3 +7,10 @@ edition = "2021"
 
 [dependencies]
 cairo-felt = "0.8.6"
+serde = { version = "1.0.175", default-features = false }
+serde_json = { version = "1.0.100", features = ["std"] }
+serde_with = { version = "2.3.3", default-features = false }
+hyper = {version = "0.14.27", features = ["full"]}
+tokio = { version = "1.30.0", features = ["full"] }
+base64 = "0.21.2"
+thiserror-no-std = "2.0.2"
