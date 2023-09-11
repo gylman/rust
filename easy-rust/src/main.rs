@@ -36,18 +36,18 @@ fn main() {
     };
 
     // Serialize the tx to bytes.
-    let serialized_data = serialize(&my_tx).expect("Serialization failed");
+    let serialized_tx = serialize(&my_tx).expect("Serialization failed");
 
-    // Store the serialized data in RocksDB.
-    db.put(b"my_key", &serialized_data)
-        .expect("Failed to put data into RocksDB");
+    // Store the serialized tx in RocksDB.
+    db.put(b"my_key", &serialized_tx)
+        .expect("Failed to put tx into RocksDB");
 
-    // Retrieve the data from RocksDB.
-    let stored_data = db.get(b"my_key").expect("Failed to get data from RocksDB");
+    // Retrieve the tx from RocksDB.
+    let stored_tx = db.get(b"my_key").expect("Failed to get tx from RocksDB");
 
-    // Deserialize the data back into a tx.
-    if let Some(data) = stored_data {
-        let deserialized_tx: Tx = deserialize(&data).expect("Deserialization failed");
+    // Deserialize the tx back into a tx.
+    if let Some(tx) = stored_tx {
+        let deserialized_tx: Tx = deserialize(&tx).expect("Deserialization failed");
         println!("Deserialized tx: {:?}", deserialized_tx);
     }
 }
