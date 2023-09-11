@@ -5,6 +5,7 @@ use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Tx {
+    block_height: String,
     nonce: String,
     gas_price: String,
     gas_limit: String,
@@ -22,32 +23,84 @@ fn main() {
     let db = DB::open_default(&path).expect("Failed to open database");
 
     // Define a sample tx.
-    // let my_tx: Vec<u32> = vec![1, 2, 3, 4, 5];
-    let my_tx = Tx {
-        nonce: String::from("0x0"),
-        gas_price: String::from("0x09184e72a000"),
-        gas_limit: String::from("0x30000"),
-        to: String::from("0xRecipientAddress"),
-        value: String::from("0x12345"),
-        data: String::from("0x"),
-        v: String::from("0x1c"),
-        r: String::from("0x7c1ec827d6a215e24f..."),
-        s: String::from("0x77fb11b3a54b7f3d10f..."),
-    };
+    // let my_tx: Vec<Tx> = vec![Tx, Tx, Tx, Tx];
 
-    // Serialize the tx to bytes.
-    let serialized_tx = serialize(&my_tx).expect("Serialization failed");
+    let my_txs: Vec<Tx> = vec![
+        Tx {
+            block_height: String::from("300523"),
+            nonce: String::from("0x0"),
+            gas_price: String::from("0x09184e72a000"),
+            gas_limit: String::from("0x30000"),
+            to: String::from("0xRecipientAddress"),
+            value: String::from("0x12345"),
+            data: String::from("0x"),
+            v: String::from("0x1c"),
+            r: String::from("0x7c1ec827d6a215e24f..."),
+            s: String::from("0x77fb11b3a54b7f3d10f..."),
+        },
+        Tx {
+            block_height: String::from("311523"),
+            nonce: String::from("0x0"),
+            gas_price: String::from("0x09184e72a000"),
+            gas_limit: String::from("0x30000"),
+            to: String::from("0xRecipientAddress"),
+            value: String::from("0x12345"),
+            data: String::from("0x"),
+            v: String::from("0x1c"),
+            r: String::from("0x7c1ec827d6a215e24f..."),
+            s: String::from("0x77fb11b3a54b7f3d10f..."),
+        },
+        Tx {
+            block_height: String::from("333523"),
+            nonce: String::from("0x0"),
+            gas_price: String::from("0x09184e72a000"),
+            gas_limit: String::from("0x30000"),
+            to: String::from("0xRecipientAddress"),
+            value: String::from("0x12345"),
+            data: String::from("0x"),
+            v: String::from("0x1c"),
+            r: String::from("0x7c1ec827d6a215e24f..."),
+            s: String::from("0x77fb11b3a54b7f3d10f..."),
+        },
+        Tx {
+            block_height: String::from("324333"),
+            nonce: String::from("0x0"),
+            gas_price: String::from("0x09184e72a000"),
+            gas_limit: String::from("0x30000"),
+            to: String::from("0xRecipientAddress"),
+            value: String::from("0x12345"),
+            data: String::from("0x"),
+            v: String::from("0x1c"),
+            r: String::from("0x7c1ec827d6a215e24f..."),
+            s: String::from("0x77fb11b3a54b7f3d10f..."),
+        },
+    ];
 
-    // Store the serialized tx in RocksDB.
-    db.put(b"my_key", &serialized_tx)
-        .expect("Failed to put tx into RocksDB");
+    let mut i = 0;
+    loop {
+        if i == my_txs.len() {
+            break;
+        }
+        let serialized_tx = serialize(&my_txs[i]).expect("Serialization failed");
+        db.put(my_txs[i].block_height.as_bytes(), &serialized_tx)
+            .expect("Failed to put tx into RocksDB");
 
-    // Retrieve the tx from RocksDB.
-    let stored_tx = db.get(b"my_key").expect("Failed to get tx from RocksDB");
+        i += 1;
+    }
 
-    // Deserialize the tx back into a tx.
-    if let Some(tx) = stored_tx {
-        let deserialized_tx: Tx = deserialize(&tx).expect("Deserialization failed");
-        println!("Deserialized tx: {:?}", deserialized_tx);
+    i = 0;
+
+    loop {
+        if i == my_txs.len() {
+            break;
+        }
+        let stored_tx = db
+            .get(my_txs[i].block_height.as_bytes())
+            .expect("Failed to get tx from RocksDB");
+        if let Some(tx) = stored_tx {
+            let deserialized_tx: Tx = deserialize(&tx).expect("Deserialization failed");
+            println!("Deserialized tx: {:?}", deserialized_tx);
+        }
+        i += 1;
     }
 }
