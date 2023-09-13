@@ -1,7 +1,17 @@
+use base64::engine::general_purpose;
+use base64::Engine as _;
 use bincode::{deserialize, serialize};
-use rocksdb::{Options, DB};
+use dotenv::dotenv;
+use hyper::header::{HeaderValue, AUTHORIZATION, CONTENT_TYPE};
+use hyper::{Body, Client, Request};
+use rocksdb::DB;
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use std::env;
 use std::path::Path;
+use std::time::Duration;
+use tokio;
+use tokio::runtime;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Tx {
@@ -15,6 +25,69 @@ struct Tx {
     v: String,
     r: String,
     s: String,
+}
+
+fn encode_data_to_base64(original: &str) -> String {
+    // Convert string to bytes
+    let bytes = original.as_bytes();
+    // Convert bytes to base64
+    let base64_str: String = general_purpose::STANDARD.encode(&bytes);
+    base64_str
+}
+
+async fn submit_to_da(data: &str) -> String {
+    dotenv().ok();
+    let da_host = env::var("DA_HOST").expect("DA_HOST must be set");
+    let da_namespace = env::var("DA_NAMESPACE").expect("DA_NAMESPACE must be set");
+    let da_auth_token = env::var("DA_AUTH_TOKEN").expect("DA_AUTH_TOKEN must be set");
+    let da_auth = format!("Bearer {}", da_auth_token);
+
+    // println!("this is the da_namespace: {:?}", da_namespace);
+
+    let client = Client::new();
+    let rpc_request = json!({
+        "jsonrpc": "2.0",
+        "method": "blob.Submit",
+        "params": [
+            [
+                {
+                    "namespace": da_namespace,
+                    "data": data,
+                }
+            ]
+        ],
+        "id": 1,
+    });
+
+    let uri = std::env::var("da_uri").unwrap_or(da_host.into());
+
+    // Token should be removed from code.
+    let req = Request::post(uri.as_str())
+        .header(
+            AUTHORIZATION,
+            HeaderValue::from_str(da_auth.as_str()).unwrap(),
+        )
+        .header(CONTENT_TYPE, HeaderValue::from_static("application/json"))
+        .body(Body::from(rpc_request.to_string()))
+        .unwrap();
+    let response_future = client.request(req);
+
+    let resp = tokio::time::timeout(Duration::from_secs(100), response_future)
+        .await
+        .map_err(|_| "Request timed out")
+        .unwrap()
+        .unwrap();
+
+    let response_body = hyper::body::to_bytes(resp.into_body()).await.unwrap();
+    let parsed: Value = serde_json::from_slice(&response_body).unwrap();
+
+    // println!("stompesi - {:?}", parsed);
+
+    if let Some(result_value) = parsed.get("result") {
+        result_value.to_string()
+    } else {
+        "".to_string()
+    }
 }
 
 fn main() {
@@ -100,6 +173,14 @@ fn main() {
         if let Some(tx) = stored_tx {
             let deserialized_tx: Tx = deserialize(&tx).expect("Deserialization failed");
             println!("Deserialized tx: {:?}", deserialized_tx);
+            let data_for_da: String = serde_json::to_string(&deserialized_tx).unwrap();
+            let encoded_data_for_da = encode_data_to_base64(&data_for_da);
+            let rt = runtime::Runtime::new().unwrap();
+
+            println!("Testing Submitting large data size...");
+            rt.block_on(async {
+                submit_to_da(&encoded_data_for_da).await;
+            });
         }
         i += 1;
     }
